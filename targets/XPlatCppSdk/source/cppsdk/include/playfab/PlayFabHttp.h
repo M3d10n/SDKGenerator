@@ -6,6 +6,7 @@
 #include <memory>
 #include <thread>
 #include <mutex>
+#include <atomic>
 
 #ifndef _WIN32
 #include <jsoncpp/json/value.h>
@@ -55,8 +56,8 @@ namespace PlayFab
 
         std::thread pfHttpWorkerThread;
         std::mutex httpRequestMutex;
-        bool threadRunning;
-        int activeRequestCount;
+        std::atomic<bool> threadRunning;
+        std::atomic<int> activeRequestCount;
         std::vector<CallRequestContainer*> pendingRequests;
         std::vector<CallRequestContainer*> pendingResults;
     };

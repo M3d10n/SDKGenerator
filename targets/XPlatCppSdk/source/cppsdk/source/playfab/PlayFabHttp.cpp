@@ -21,13 +21,13 @@ namespace PlayFab
     PlayFabHttp::PlayFabHttp()
     {
         activeRequestCount = 0;
-        threadRunning = true;
+        threadRunning.store(true, std::memory_order_release);
         pfHttpWorkerThread = std::thread(&PlayFabHttp::WorkerThread, this);
     };
 
     PlayFabHttp::~PlayFabHttp()
     {
-        threadRunning = false;
+        threadRunning.exchange(false, std::memory_order_release);
         pfHttpWorkerThread.join();
         for (size_t i = 0; i < pendingRequests.size(); ++i)
             delete pendingRequests[i];
@@ -56,7 +56,7 @@ namespace PlayFab
     {
         size_t queueSize;
 
-        while (this->threadRunning)
+        while (this->threadRunning.load(std::memory_order_acquire))
         {
             CallRequestContainer* reqContainer = nullptr;
 
