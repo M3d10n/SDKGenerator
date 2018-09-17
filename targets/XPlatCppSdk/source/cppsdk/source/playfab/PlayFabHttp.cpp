@@ -20,7 +20,7 @@ namespace PlayFab
 
     PlayFabHttp::PlayFabHttp()
     {
-        activeRequestCount = 0;
+        activeRequestCount.store(0, std::memory_order_release);
         threadRunning.store(true, std::memory_order_release);
         pfHttpWorkerThread = std::thread(&PlayFabHttp::WorkerThread, this);
     };
@@ -35,7 +35,7 @@ namespace PlayFab
         for (size_t i = 0; i < pendingResults.size(); ++i)
             delete pendingResults[i];
         pendingResults.clear();
-        activeRequestCount = 0;
+        activeRequestCount.exchange(0, std::memory_order_release);
     }
 
     void PlayFabHttp::MakeInstance()
@@ -220,7 +220,7 @@ namespace PlayFab
         { // LOCK httpRequestMutex
             std::unique_lock<std::mutex> lock(httpRequestMutex);
             if (pendingResults.empty())
-                return activeRequestCount;
+                return activeRequestCount.load(std::memory_order_acquire);
 
             reqContainer = pendingResults[pendingResults.size() - 1];
             pendingResults.pop_back();
@@ -230,10 +230,6 @@ namespace PlayFab
         HandleResults(*reqContainer);
         delete reqContainer;
 
-        // activeRequestCount can be altered by HandleResults, so we have to re-lock and return an updated value
-        { // LOCK httpRequestMutex
-            std::unique_lock<std::mutex> lock(httpRequestMutex);
-            return activeRequestCount;
-        }
+        return activeRequestCount.load(std::memory_order_acquire);
     }
 }
